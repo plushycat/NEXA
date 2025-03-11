@@ -1,8 +1,5 @@
 from langchain.tools import tool
-from langchain import LLMChain, PromptTemplate
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from transformers import pipeline
 
 def get_custom_retriever_tool(llm, retriever):
     @tool("Custom_Retriever_Tool")
@@ -15,20 +12,8 @@ def get_custom_retriever_tool(llm, retriever):
 
         Question: {input_details}
         """
-        prompt = ChatPromptTemplate.from_template(template)
-        def format_docs(docs):
-            return "\n\n".join([d.page_content for d in docs])
-
-
-        chain = (
-            {"context": retriever | format_docs, "input_details": RunnablePassthrough()}
-            | prompt
-            | llm
-            | StrOutputParser()
-        )
-
-        # Invoke the chain with the provided input_data
-        result = chain.invoke(input_data)
-        return result
+        prompt = template.format(context=retriever, input_details=input_data)
+        result = llm(prompt)
+        return result[0]['generated_text']
     
     return custom_retriever_tool

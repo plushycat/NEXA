@@ -1,13 +1,11 @@
-# src/intent_engine/query_vector_store.py
 from utils.load_vector_stores import load_vector_stores
 from langchain.tools.retriever import create_retriever_tool
-from langchain.agents import AgentExecutor, create_openai_tools_agent
-from langchain_openai import OpenAIEmbeddings
-from config import OPENAI_API_KEY
-
+from langchain.agents import AgentExecutor, create_huggingface_tools_agent
+from transformers import pipeline
+from config import HUGGINGFACE_API_KEY
 
 # Load vector stores
-embeddings_model = OpenAIEmbeddings(model='text-embedding-3-large', openai_api_key=OPENAI_API_KEY)
+embeddings_model = pipeline("feature-extraction", model="sentence-transformers/all-MiniLM-L6-v2")
 internal_path = 'data/internal_policy'
 external_path = 'data/external_policy'
 grievances_path = 'data/grievances'
@@ -35,7 +33,7 @@ def query_vector_store(intent, user_input, llm, tools_prompt):
     )
 
     tools = [tool]
-    agent = create_openai_tools_agent(llm, tools, tools_prompt)
+    agent = create_huggingface_tools_agent(llm, tools, tools_prompt)
     agent_executor = AgentExecutor(agent=agent, tools=tools)
     result = agent_executor.invoke({"input": user_input})
     return result['output']

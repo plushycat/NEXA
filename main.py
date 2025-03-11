@@ -1,63 +1,28 @@
-# src/main.py
-import streamlit as st
+import os
+from flask import Flask, request, jsonify
+from transformers import pipeline
+from config import LLM
 from chatbot.chatbot import process_message
-from utils.query_vector_store import query_vector_store
-from collections import Counter
-from langchain import hub
-from langchain_openai import ChatOpenAI
 
-# Load prompt and LLM
-prompt = hub.pull("hwchase17/openai-tools-agent")
-llm = ChatOpenAI(temperature=0, model_name='gpt-4')
+app = Flask(__name__)
 
-# Initialize chat history with the welcome message
-chat_history = [("System", "Hello! Welcome to the HR Grievance Chatbot. May I have your name, please?")]
+# Initialize global variables
+chat_history = []
 context = ""
-grievance_stage = 1  # Set initial stage to 1 since we're asking for the name
+grievance_stage = 0
 
-st.title("HR Pro Bot")
+@app.route('/chat', methods=['POST'])
+def chat():
+    global chat_history, context, grievance_stage
 
-# Streamlit chat components
-if 'chat_history' not in st.session_state:
-    st.session_state.chat_history = chat_history
+    user_input = request.json.get('message')
+    prompt = request.json.get('prompt', '')
 
-if 'context' not in st.session_state:
-    st.session_state.context = context
+    response_text, grievance_stage, context = process_message(user_input, chat_history, context, grievance_stage, LLM, prompt)
+    chat_history.append({"role": "user", "content": user_input})
+    chat_history.append({"role": "bot", "content": response_text})
 
-if 'grievance_stage' not in st.session_state:
-    st.session_state.grievance_stage = grievance_stage
+    return jsonify({"response": response_text})
 
-def submit_message():
-    user_input = st.session_state.input_message
-    if user_input:
-        # Add the user input to the chat history
-        st.session_state.chat_history.append(("User", user_input))
-        
-        response, updated_history, updated_context, updated_stage, final_response = process_message(
-            user_input, st.session_state.chat_history, st.session_state.context, st.session_state.grievance_stage, llm, prompt)
-        
-        st.session_state.chat_history = updated_history
-        st.session_state.context = updated_context
-        st.session_state.grievance_stage = updated_stage
-
-        if updated_stage == 0:
-            st.session_state.admin_display = st.markdown(final_response)
-        
-        st.session_state.input_message = ""
-
-# Display chat history
-for i, (sender, message) in enumerate(st.session_state.chat_history):
-    if sender == "System":
-        if i == 0:
-            st.chat_message("🎉").write(message)  # Different icon for the welcome message
-        else:
-            st.chat_message("💬").write(message)
-    else:
-        st.chat_message("💬").write(message)
-
-# Input box for user message (fixed at the bottom)
-st.text_input("Enter your message", key="input_message", on_change=submit_message)
-
-# Set rate limit
-rate_limit = 60  # Adjust this based on your estimated Gemini rate limit (requests per minute)
-api_calls_counter = Counter()  # Initialize counter
+if __name__ == '__main__':
+    app.run(debug=True)

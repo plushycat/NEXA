@@ -1,13 +1,14 @@
 import os
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_openai import OpenAIEmbeddings
+from transformers import pipeline, AutoModelForSeq2SeqLM, AutoTokenizer
 
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
 
-
-LLM = ChatOpenAI(temperature=0, model_name='gpt-4', openai_api_key=OPENAI_API_KEY)
-embeddings_model = OpenAIEmbeddings(model='text-embedding-3-large', openai_api_key=OPENAI_API_KEY)
+# Load HuggingFace models
+model_name = "facebook/bart-large-cnn"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+LLM = pipeline("text2text-generation", model=model, tokenizer=tokenizer)

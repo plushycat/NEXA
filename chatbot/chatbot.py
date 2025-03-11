@@ -1,7 +1,6 @@
 from agents.grievance_agent import generate_report
 import pandas as pd
-from langchain_core.pydantic_v1 import BaseModel, Field
-import google.generativeai as genai
+from transformers import pipeline
 from collections import Counter
 from config import LLM
 
@@ -15,8 +14,6 @@ from intent_engine.process_navigation import process_navigation as determine_nav
 from utils.query_vector_store import query_vector_store
 from utils.load_vector_stores import load_vector_stores
 from chatbot.collect_grievance_info import collect_grievance_info
-
-
 
 # Initialize DataFrame to store chat responses
 chat_data = pd.DataFrame(columns=["Role", "Content"])
@@ -54,16 +51,12 @@ messages = {
     "invalid_option": "I'm sorry, I didn't understand that. Please choose a valid option:\n1. General Inquiry\n2. HR or Payroll Questions\n3. Capture and Analyze Grievances"
 }
 
-
 def process_message(user_input, chat_history, context, grievance_stage, llm, prompt):
     global chat_data
     global username
     global final_report
     global admin_recommendations
     global intent
-
-    # if user_input.lower() == 'done':
-    #     return "Chat session ended.", chat_history, context, grievance_stage
 
     is_return, is_query = determine_navigation(user_input)
 
@@ -134,14 +127,6 @@ def process_message(user_input, chat_history, context, grievance_stage, llm, pro
             response_text = f"{query_vector_store(intent, user_input, llm, prompt)}\n\n{messages['ask_next_option']}"  # This will be the final response
             grievance_stage = 20  # Stay in the same stage to allow more HR or payroll questions
             
-        print(context)
-
-    # Update chat history
-    chat_history.append((user_input, response_text))
-
-    # Update DataFrame
-    new_row_user = pd.DataFrame([{"Role": "User", "Content": user_input}])
-    new_row_coach = pd.DataFrame([{"Role": "Coach", "Content": response_text}])
-    chat_data = pd.concat([chat_data, new_row_user, new_row_coach], ignore_index=True)
-
-    return "", chat_history, context, grievance_stage, response_text
+    chat_data = chat_data.append({"Role": "User", "Content": user_input}, ignore_index=True)
+    chat_data = chat_data.append({"Role": "Bot", "Content": response_text}, ignore_index=True)
+    return response_text, grievance_stage, context

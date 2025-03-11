@@ -1,42 +1,49 @@
-from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from transformers import pipeline
 from config import LLM
 
-class GrievanceResponse(BaseModel):
-    is_complete: bool = Field(description="Indicates whether the information collected is complete.")
-    next_question: str = Field(description="The next question to ask the user for collecting more information.")
-    collected_info: str = Field(description="Collected information from the user so far.")
+class GrievanceInfoCollector:
+    def __init__(self, llm):
+        self.llm = llm
+        self.collected_info = {}
+        self.is_complete = False
+        self.next_question = "Where did the incident happen?"
 
-structured_llm = LLM.with_structured_output(GrievanceResponse)
+    def collect_info(self, user_input):
+        if "incident_location" not in self.collected_info:
+            self.collected_info["incident_location"] = user_input
+            self.next_question = "When did the incident happen? Please provide the date and time."
+        elif "incident_date_time" not in self.collected_info:
+            self.collected_info["incident_date_time"] = user_input
+            self.next_question = "Please describe exactly what happened."
+        elif "incident_description" not in self.collected_info:
+            self.collected_info["incident_description"] = user_input
+            self.next_question = "Who was involved? Please list all people involved (victims, witnesses)."
+        elif "people_involved" not in self.collected_info:
+            self.collected_info["people_involved"] = user_input
+            self.next_question = "How did the situation make you feel? (e.g., anger, sadness)"
+        elif "feelings" not in self.collected_info:
+            self.collected_info["feelings"] = user_input
+            self.next_question = "Do you have any specific concerns (e.g., discrimination, physical or emotional violence, safety issues)?"
+        elif "specific_concerns" not in self.collected_info:
+            self.collected_info["specific_concerns"] = user_input
+            self.next_question = "Was anyone in danger? Describe any injuries or violent actions."
+        elif "danger" not in self.collected_info:
+            self.collected_info["danger"] = user_input
+            self.next_question = "Based on what you've shared, how urgent do you feel this issue is?"
+        elif "urgency" not in self.collected_info:
+            self.collected_info["urgency"] = user_input
+            self.next_question = "What would you like to do about it?"
+        elif "action" not in self.collected_info:
+            self.collected_info["action"] = user_input
+            self.next_question = "Is there anything else you would like to share about this incident?"
+        elif "additional_details" not in self.collected_info:
+            self.collected_info["additional_details"] = user_input
+            self.is_complete = True
+            self.next_question = "Thank you for providing all the details. We will now generate a report."
 
-def collect_grievance_info(user_input: str) -> GrievanceResponse:
-    prompt_template = f"""
-    You are an HR assistant tasked with collecting detailed information about an incident from an employee. Your goal is to gather all necessary details in a friendly and supportive manner, ensuring the employee feels heard and supported. Please avoid asking the same question multiple times and adapt based on the employee's responses.
+        return self
 
-    User Input: {user_input}
-    
-    PLEASE COMMUNICATE WITH USER IN A FRIENDLY MANNER.
-
-    Task: Based on the context and user input, determine if the information collected is sufficient to generate a detailed incident report. 
-    If the information is complete, respond with is_complete as true and provide a summary of the collected information.
-    If the information is not complete, respond with is_complete as false and provide the next question to ask the user to gather the required information.
-
-    Ensure the collected information includes:
-    - Description: Describe exactly what happened.
-    - Location: Where did it happen?
-    - Date and Time: When did it happen?
-    - Who was involved (list all people involved - victims, witnesses).
-    - How did the situation make you feel? (anger, sadness, etc.).
-    - Was anyone in danger? Describe any injuries or violent actions.
-
-    Response Format:
-    {{
-        "is_complete": true/false,
-        "next_question": "string",
-        "collected_info": "string"
-    }}
-    """
-    structured_response = structured_llm.invoke(prompt_template)
-    return structured_response
+def collect_grievance_info(context):
+    collector = GrievanceInfoCollector(LLM)
+    collector.collect_info(context)
+    return collector

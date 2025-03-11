@@ -1,6 +1,5 @@
 from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
-
+from transformers import pipeline
 
 def load_vector_stores(internal_path, external_path, grievances_path, embeddings_model):
     external_policy_db = FAISS.load_local(external_path, embeddings_model, allow_dangerous_deserialization=True)
