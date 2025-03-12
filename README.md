@@ -1,6 +1,6 @@
 # About this fork:
-## This fork aims to replace the OpenAI implementation with that of HuggingFace, and much more.
-
+This fork aims to replace the OpenAI implementation found in the source project with HuggingFace's implementation, and much more.
+The original project description is down below:
 
 # HR Chatbot
 
